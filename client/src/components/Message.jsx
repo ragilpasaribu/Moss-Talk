@@ -6,7 +6,7 @@ import Avatar from './Avatar';
 import {BsThreeDotsVertical} from 'react-icons/bs';
 import {FaAngleLeft, FaPlus, FaRegImage, FaVideo} from 'react-icons/fa';
 import {IoSendSharp} from 'react-icons/io5';
-import { IoMdClose } from 'react-icons/io';
+import {IoMdClose} from 'react-icons/io';
 import moment from 'moment';
 import uploadFile from '../helpers/UploadFile';
 import Loading from './Loading';
@@ -95,6 +95,7 @@ const Message = () => {
 
   const handleSendMessage = e => {
     e.preventDefault();
+
     if (message.text || message.imageUrl || message.videoUrl) {
       const event = isEditing ? 'edit-message' : 'pesan baru';
       const payload = {
@@ -103,29 +104,34 @@ const Message = () => {
         text: message.text,
         imageUrl: message.imageUrl,
         videoUrl: message.videoUrl,
-        msgByUserId: user?.id,
-        ...(isEditing && {messageId: editMessageId}),
+        ...(isEditing && {messageId: editMessageId}), // Pastikan messageId ini benar
       };
-  
+
       socket.emit(event, payload);
-  
-      // Update state allMessages setelah mengirim pesan baru atau pesan yang diedit
+
+      // Update state allMessages
       if (isEditing) {
         setAllMessages(prevMessages =>
           prevMessages.map(msg =>
-            msg.id === editMessageId ? { ...msg, text: message.text, imageUrl: message.imageUrl, videoUrl: message.videoUrl } : msg
-          )
+            msg.id === editMessageId
+              ? {
+                  ...msg,
+                  text: message.text,
+                  imageUrl: message.imageUrl,
+                  videoUrl: message.videoUrl,
+                }
+              : msg,
+          ),
         );
       } else {
         setAllMessages(prevMessages => [...prevMessages, payload]);
       }
-  
+
       setMessage({text: '', imageUrl: '', videoUrl: ''});
       setIsEditing(false);
       setEditMessageId(null);
     }
   };
-  
 
   const handleEditMessage = (msgId, msgText) => {
     setIsEditing(true);
@@ -135,18 +141,24 @@ const Message = () => {
       text: msgText,
     }));
   };
-  
 
   const handleDeleteMessage = msgId => {
-    socket.emit('delete-message', {
-      messageId: msgId,
-      conversationId: params.userId,
-      sender: user.id,
-      receiver: params.userId,
-    });
-  
-    // Perbarui state allMessages untuk menghapus pesan dari tampilan
-    setAllMessages(prevMessages => prevMessages.filter(msg => msg.id !== msgId));
+    const isConfirmed = window.confirm(
+      'Apakah Anda setuju menghapus pesan ini?',
+    );
+    if (isConfirmed) {
+      socket.emit('delete-message', {
+        messageId: msgId,
+        conversationId: params.userId,
+        sender: user.id,
+        receiver: params.userId,
+      });
+
+      // Perbarui state allMessages untuk menghapus pesan dari tampilan
+      setAllMessages(prevMessages =>
+        prevMessages.filter(msg => msg.id !== msgId),
+      );
+    }
   };
 
   return (
