@@ -205,19 +205,45 @@ io.on('connection', async socket => {
 
   socket.on('edit-message', async data => {
     try {
-      const {messageId, newText} = data;
+      const {messageId, text, conversationId} = data;
+
+      // Log untuk memastikan data yang diterima benar
+      console.log('Menerima request edit pesan:', data);
 
       // Update pesan di database
-      const updatedMessage = await MessageModel.update(
-        {text: newText},
+      const [updateCount] = await MessageModel.update(
+        {text: text},
         {where: {id: messageId}},
       );
 
-      if (updatedMessage[0] > 0) {
+      console.log('Jumlah pesan yang diperbarui:', updateCount);
+
+      if (updateCount > 0) {
+        // Cek apakah conversationId tersedia
+        if (!conversationId) {
+          throw new Error('conversationId tidak ditemukan');
+        }
+
         const conversation = await ConversationModel.findOne({
-          where: {id: data.conversationId},
-          include: [{model: MessageModel, as: 'messages'}],
-          order: [[{model: MessageModel, as: 'messages'}, 'createdAt', 'ASC']],
+          where: {
+            id: conversationId, // pastikan conversationId valid
+          },
+          include: [
+            {
+              model: MessageModel,
+              as: 'messages',
+            },
+          ],
+          order: [
+            [
+              {
+                model: MessageModel,
+                as: 'messages',
+              },
+              'createdAt',
+              'ASC',
+            ],
+          ],
         });
 
         io.to(data.sender.toString()).emit('pesan', conversation.messages);
